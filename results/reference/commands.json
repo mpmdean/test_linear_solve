@@ -1,0 +1,43 @@
+{
+  "compile": [
+    "mpifort",
+    "-O3",
+    "-fPIC",
+    "-ffree-line-length-none",
+    "-dynamiclib",
+    "src/m_constants.f90",
+    "src/m_control.f90",
+    "src/m_types.f90",
+    "src/spmv.f90",
+    "src/linsys.f90",
+    "pminres_test_bridge.f90",
+    "-o",
+    "build/libpminres_test.dylib"
+  ],
+  "run": [
+    "mpirun",
+    "-n",
+    "8",
+    "python",
+    "-u",
+    "test_pu_o45_linear_solvers.py",
+    "--worker",
+    "--output-dir",
+    "OUTPUT",
+    "--ranks",
+    "8",
+    "--repeats",
+    "3",
+    "--energy-index",
+    "4"
+  ],
+  "source_sha256": {
+    "src/m_constants.f90": "75c654565034584295c62f1b5a4d033944e10712788e3ad5c87c65ae393fd1a4",
+    "src/m_control.f90": "569289fbf3c6c49ce539630117bf2d3e5b370ba3b84b1e302ba77c1b858dc6a5",
+    "src/m_types.f90": "d6fb3d213d24dbb6d666604cbc13e5d87397b07a57feac60289df101739d3c6c",
+    "src/spmv.f90": "07b83c4b4e013e75844004b785a4dd57516e16c3f2bb1e65f84f5ac4b5e9331a",
+    "src/linsys.f90": "688367cfe7d08575b6289f37c8c3690165bf4fc4c18bb5d43daeba4b44190c66",
+    "pminres_test_bridge.f90": "25d54467e3025ad0067a8637e04ef5a591a67fc84363f1a1fd88dc4a88d2e57b"
+  },
+  "note": "Portable representation of the reference run commands; machine-specific paths replaced."
+}

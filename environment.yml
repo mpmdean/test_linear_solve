@@ -1,0 +1,17 @@
+name: pu-o45-linear-solvers
+channels:
+  - conda-forge
+dependencies:
+  - python=3.14.7
+  - numpy=2.5.3
+  - scipy=1.18.1
+  - sympy=1.14.0
+  - matplotlib=3.11.2
+  - numba=0.67.0
+  - openmpi=5.0.10
+  - mpi4py=4.1.2
+  - petsc=3.25.5=*complex*
+  - petsc4py=3.25.5
+  - slepc=3.25.1=*complex*
+  - slepc4py=3.25.1
+  - fortran-compiler

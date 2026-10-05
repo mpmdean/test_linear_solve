@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.mod
+*.o
+*.so
+*.dylib
+runs/
+build/
+mpl_cache/
+.DS_Store

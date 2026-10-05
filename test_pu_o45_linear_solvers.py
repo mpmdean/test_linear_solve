@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare actual Fortran PMINRES with PETSc GMRES on one Pu O45 system.
+"""Compare actual Fortran PMINRES with PETSc solvers on one Pu O45 system.
 
 Run using the PETSc+Numba environment's Python. Defaults: eight ranks, grid
 index 4 of the ten Pu O45 incident energies, three solves per method, alternating
@@ -16,10 +16,31 @@ from pathlib import Path
 import re
 import statistics
 import shutil
+import shlex
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent
+
+# Each variant still uses the same absolute tolerance and independent residual
+# check. Right preconditioning keeps GMRES's monitored norm unpreconditioned.
+PETSC_METHODS = {
+    'petsc_pminres': {'ksp_type': 'python', 'pc_type': 'none'},
+    'petsc_pminres_c': {'ksp_type': 'python', 'pc_type': 'none'},
+    'gmres': {'ksp_type': 'gmres', 'ksp_gmres_restart': 200, 'pc_type': 'none'},
+    'gmres400': {'ksp_type': 'gmres', 'ksp_gmres_restart': 400, 'pc_type': 'none'},
+    'gmres800': {'ksp_type': 'gmres', 'ksp_gmres_restart': 800, 'pc_type': 'none'},
+    'cg_symmetric': {'ksp_type': 'cg', 'ksp_cg_type': 'symmetric', 'pc_type': 'none'},
+    'gmres_jacobi': {'ksp_type': 'gmres', 'ksp_gmres_restart': 200, 'pc_type': 'jacobi'},
+    'gmres_bjacobi': {'ksp_type': 'gmres', 'ksp_gmres_restart': 200,
+                      'pc_type': 'bjacobi', 'sub_ksp_type': 'preonly',
+                      'sub_pc_type': 'ilu', 'sub_pc_factor_levels': 0},
+    'gmres_asm': {'ksp_type': 'gmres', 'ksp_gmres_restart': 200,
+                  'pc_type': 'asm', 'pc_asm_overlap': 1, 'sub_ksp_type': 'preonly',
+                  'sub_pc_type': 'ilu', 'sub_pc_factor_levels': 0},
+    **{name: {'ksp_type': name, 'pc_type': 'none'}
+       for name in ('bcgs', 'bcgsl', 'tfqmr', 'bicg')},
+}
 
 
 def worker(args):
@@ -34,6 +55,8 @@ def worker(args):
     from pu_o45_parameters import build_physical_parameters
 
     comm = MPI.COMM_WORLD
+    if args.profile:
+        PETSc.Log.begin()
     assert comm.size == args.ranks == PETSc.COMM_WORLD.getSize()
     assert np.dtype(PETSc.ScalarType) == np.dtype(np.complex128)
     params = build_physical_parameters()
@@ -95,30 +118,77 @@ def worker(args):
     residual = rhs.duplicate()
     solution = rhs.duplicate()
     previous = rhs.duplicate()
+    difference_vec = rhs.duplicate()
+    # Check the structure instead of assuming that a complex shift is Hermitian.
+    centered = matrix.copy()
+    centered.shift(-.2j)
+    adjoint = centered.copy()
+    adjoint.hermitianTranspose()
+    adjoint.axpy(-1, centered)
+    transpose = matrix.copy()
+    transpose.transpose()
+    transpose.axpy(-1, matrix)
+    structure = {'shift_removed_hermitian_defect': adjoint.norm()/centered.norm(),
+                 'transpose_symmetry_defect': transpose.norm()/matrix.norm()}
+    adjoint.destroy()
+    transpose.destroy()
+    centered.destroy()
+    if comm.rank == 0:
+        print('MATRIX_STRUCTURE '+json.dumps(structure), flush=True)
+    matvec_times = {}
+    if args.matvec_repeats:
+        for method in ('fortran', 'petsc'):
+            comm.Barrier()
+            begin = MPI.Wtime()
+            for _ in range(args.matvec_repeats):
+                if method == 'fortran':
+                    lib.multiply(probe_array, converted)
+                else:
+                    matrix.mult(probe, reference)
+            matvec_times[method] = comm.allreduce(MPI.Wtime()-begin, op=MPI.MAX) / args.matvec_repeats
     records = []
     for repeat in range(1, args.repeats+1):
-        order = ['pminres_csr', 'gmres'] if repeat % 2 else ['gmres', 'pminres_csr']
+        order = args.methods if repeat % 2 else list(reversed(args.methods))
         for position, method in enumerate(order):
             if comm.rank == 0:
                 print(f'TRIAL {repeat} {method}', flush=True)
             solution.set(0)
             ksp = None
-            if method == 'gmres':
+            if method != 'pminres_csr':
+                if method == 'cg_symmetric' and structure['transpose_symmetry_defect'] > 1e-13:
+                    raise ValueError('Complex symmetric CG requires A = A^T')
                 ksp = PETSc.KSP().create(matrix.getComm())
-                ksp.setType('gmres')
-                ksp.getPC().setType('none')
-                ksp.setGMRESRestart(200)
+                prefix = 'bench_'
+                ksp.setOptionsPrefix(prefix)
+                options = PETSc.Options()
+                for key, value in PETSC_METHODS[method].items():
+                    options[prefix+key] = value
+                ksp.setFromOptions()
+                if method in ('petsc_pminres', 'petsc_pminres_c'):
+                    from petsc_shifted_pminres import ShiftedPMINRES, CompiledShiftedPMINRES
+                    if structure['shift_removed_hermitian_defect'] > 1e-13:
+                        raise ValueError('Shifted PMINRES requires A - 0.2j*I to be Hermitian')
+                    context = (ShiftedPMINRES() if method == 'petsc_pminres' else
+                               CompiledShiftedPMINRES(args.output_dir/'build/libpetsc_pminres.dylib'))
+                    ksp.setPythonContext(context)
+                if ksp.getType() not in ('bicg', 'cg', 'python'):
+                    ksp.setPCSide(PETSc.PC.Side.RIGHT)
                 ksp.setNormType(PETSc.KSP.NormType.UNPRECONDITIONED)
                 ksp.setTolerances(rtol=0, atol=1e-8, max_it=5000)
                 ksp.setOperators(matrix)
+            stage = PETSc.Log.Stage(f'{method}_{repeat}') if args.profile else None
             output = solution.getArray()
             comm.Barrier()
+            if stage is not None:
+                stage.push()
             begin = MPI.Wtime()
             if ksp is None:
                 lib.solve(b, output)
             else:
                 ksp.solve(rhs, solution)
             elapsed = comm.allreduce(MPI.Wtime()-begin, op=MPI.MAX)
+            if stage is not None:
+                stage.pop()
             del output
             matrix.mult(solution, residual)
             residual.axpy(-1, rhs)
@@ -127,20 +197,29 @@ def worker(args):
             if position == 0:
                 solution.copy(previous)
             else:
-                previous.axpy(-1, solution)
-                difference = previous.norm()/solution.norm()
+                previous.copy(difference_vec)
+                difference_vec.axpy(-1, solution)
+                difference = difference_vec.norm()/solution.norm()
             record = {'repeat': repeat, 'method': method, 'wall_s': elapsed,
                       'iterations': ksp.getIterationNumber() if ksp is not None else None,
                       'reason': ksp.getConvergedReason() if ksp is not None else None,
                       'true_absolute_residual': true_residual,
                       'true_relative_residual': true_residual/rhs_norm,
                       'passes_atol': bool(true_residual <= 1e-8),
+                      'solution_comparison_method': order[0] if position else None,
                       'relative_solution_difference': difference}
             records.append(record)
             if comm.rank == 0:
                 print('RESULT '+json.dumps(record), flush=True)
             if ksp is not None:
                 ksp.destroy()
+                # Subdomain KSPs read their options during lazy PC setup.
+                for key in PETSC_METHODS[method]:
+                    del options[prefix+key]
+    if args.profile:
+        viewer = PETSc.Viewer().createASCII(str(args.output_dir/'petsc-profile.txt'), comm=matrix.getComm())
+        PETSc.Log.view(viewer)
+        viewer.destroy()
     if comm.rank == 0:
         (args.output_dir/'results.json').write_text(json.dumps({
             'ranks': comm.size, 'dimension': matrix.getSize()[0],
@@ -149,10 +228,13 @@ def worker(args):
             'matrix_action_relative_error': conversion_error,
             'atol': 1e-8, 'maxiter_both': 5000, 'gmres_restart': 200,
             'petsc_version': PETSc.Sys.getVersion(), 'mpi': MPI.Get_library_version(),
+            'methods': {m: PETSC_METHODS.get(m) for m in args.methods},
+            'matrix_structure': structure, 'matvec_seconds': matvec_times,
+            'profile_enabled': args.profile, 'matvec_repeats': args.matvec_repeats,
             'runs': records,
         }, indent=2)+'\n')
     lib.cleanup()
-    for obj in [probe, reference, residual, solution, previous, matrix, rhs,
+    for obj in [probe, reference, residual, solution, previous, difference_vec, matrix, rhs,
                 *states, hi, hn, *transitions]:
         obj.destroy()
 
@@ -163,12 +245,18 @@ def main():
     parser.add_argument('--ranks', type=int, default=8)
     parser.add_argument('--repeats', type=int, default=3)
     parser.add_argument('--energy-index', type=int, default=4, choices=range(10))
+    parser.add_argument('--methods', nargs='+', default=['pminres_csr', 'gmres'],
+                        choices=['pminres_csr', *PETSC_METHODS])
+    parser.add_argument('--profile', action='store_true', help='write PETSc event timings by solve')
+    parser.add_argument('--matvec-repeats', type=int, default=0, help='time isolated matrix products')
     parser.add_argument('--edrixs-root', type=Path, help='path to a compatible EDRIXS source checkout')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     args.output_dir = args.output_dir.resolve()
-    if args.ranks < 1 or args.repeats < 1:
-        parser.error('ranks and repeats must be positive')
+    if args.ranks < 1 or args.repeats < 1 or args.matvec_repeats < 0:
+        parser.error('ranks and repeats must be positive; matvec-repeats must be nonnegative')
+    if len(set(args.methods)) != len(args.methods):
+        parser.error('methods must be distinct')
     if args.worker:
         try:
             worker(args)
@@ -208,13 +296,30 @@ def main():
     with (args.output_dir/'build.log').open('w') as stream:
         subprocess.run(compile_cmd, cwd=build, env=env, stdout=stream,
                        stderr=subprocess.STDOUT, check=True)
+    petsc_compile_cmd = None
+    if 'petsc_pminres_c' in args.methods:
+        env['PKG_CONFIG_PATH'] = str(prefix.parent/'lib/pkgconfig')+os.pathsep+env.get('PKG_CONFIG_PATH', '')
+        flags = subprocess.check_output([executable('pkg-config'), '--cflags', '--libs', 'PETSc'],
+                                        env=env, text=True)
+        petsc_compile_cmd = [executable('mpicc'), '-O3', '-fPIC',
+                             '-dynamiclib' if sys.platform == 'darwin' else '-shared',
+                             str(ROOT/'petsc_shifted_pminres.c'), *shlex.split(flags),
+                             '-o', str(build/'libpetsc_pminres.dylib')]
+        with (args.output_dir/'build.log').open('a') as stream:
+            subprocess.run(petsc_compile_cmd, cwd=build, env=env, stdout=stream,
+                           stderr=subprocess.STDOUT, check=True)
     command = [executable('mpirun'), '-n', str(args.ranks), sys.executable, '-u',
                str(Path(__file__).resolve()), '--worker', '--output-dir', str(args.output_dir),
                '--ranks', str(args.ranks), '--repeats', str(args.repeats),
                '--energy-index', str(args.energy_index)]
+    command += ['--methods', *args.methods, '--matvec-repeats', str(args.matvec_repeats)]
+    if args.profile:
+        command.append('--profile')
     (args.output_dir/'commands.json').write_text(json.dumps({
-        'compile': compile_cmd, 'run': command,
-        'source_sha256': {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},
+        'compile': compile_cmd, 'petsc_compile': petsc_compile_cmd, 'run': command,
+        'source_sha256': {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
+                          for p in [*sources, Path(__file__), ROOT/'pu_o45_parameters.py',
+                                    ROOT/'petsc_shifted_pminres.py', ROOT/'petsc_shifted_pminres.c']},
     }, indent=2)+'\n')
     with (args.output_dir/'run.log').open('w') as stream:
         subprocess.run(command, cwd=args.output_dir, env=env, stdout=stream,
@@ -235,35 +340,39 @@ def main():
         writer = csv.DictWriter(stream, fieldnames=list(result['runs'][0]))
         writer.writeheader()
         writer.writerows(result['runs'])
-    lines = ['# Pu O45: Fortran PMINRES versus PETSc GMRES', '',
+    lines = ['# Pu O45: Fortran PMINRES versus PETSc solvers', '',
              f"One {result['dimension']} × {result['dimension']} intermediate-state system, "
              f"{args.ranks} MPI ranks, one thread/rank; incident grid index {args.energy_index}, "
              f"omega={result['omega_eV']:.9f} eV, broadening 0.2 eV.", '',
-             'Both methods receive identical CSR coefficients and RHS, use a zero initial guess, '
-             'absolute tolerance 1e-8 and a common 5,000-iteration cap. GMRES restart=200, '
-             'no preconditioner. The actual production Fortran sources are compiled unchanged '
+             'All methods receive identical CSR coefficients and RHS, use a zero initial guess, '
+             'absolute tolerance 1e-8 and a common 5,000-iteration cap. The gmres baseline uses '
+             'restart=200 and no preconditioner; variant options are recorded in results.json. '
+             'GMRES variants use right preconditioning and an unpreconditioned residual norm. '
+             'The actual production Fortran sources are compiled unchanged '
              'with -O3 and called through a test-only C interface. CSR conversion preserves '
              'PETSc row ownership and uses the production Fortran MPI matvec.', '',
              '| Solver | Median solve (s) | Range (s) | Iterations | Worst true residual | Passes |',
              '| :--- | ---: | ---: | ---: | ---: | ---: |']
     medians = {}
-    for method in ('pminres_csr','gmres'):
+    for method in args.methods:
         runs = [r for r in result['runs'] if r['method'] == method]
         times = [r['wall_s'] for r in runs]
         medians[method] = statistics.median(times)
         lines.append(f"| {method} | {medians[method]:.6f} | {min(times):.6f}–{max(times):.6f} | "
                      f"{min(r['iterations'] for r in runs)}–{max(r['iterations'] for r in runs)} | "
                      f"{max(r['true_absolute_residual'] for r in runs):.3e} | "
-                     f"{sum(r['passes_atol'] for r in runs)}/{len(runs)} |")
-    ratio = medians['gmres']/medians['pminres_csr']
-    lines += ['', f'GMRES/PMINRES median time ratio: **{ratio:.3f}**. '
-              'Interpret speed only together with the independently checked residuals.', '',
+                     f"{sum(r['passes_atol'] and (r['reason'] is None or r['reason'] > 0) for r in runs)}/{len(runs)} |")
+    if 'gmres' in medians and 'pminres_csr' in medians:
+        ratio = medians['gmres']/medians['pminres_csr']
+        lines += ['', f'GMRES/PMINRES median time ratio: **{ratio:.3f}**.']
+    lines += ['', 'Interpret speed only together with the independently checked residuals.', '',
               f"Fortran/PETSc matrix-action relative difference: {result['matrix_action_relative_error']:.3e}.", '',
-              f'{args.repeats} measurements per solver in alternating order. Setup, JIT, matrix '
+              f'{args.repeats} measurements per solver, reversing order on even repeats. Model setup, JIT, matrix '
               'conversion, and independent residual checks are outside timing. Maximum elapsed '
               'time across ranks is reported. Fresh KSP objects include lazy solver setup in '
               'KSPSolve; Fortran includes allocation, its diagnostic output and its own final '
-              'residual check. No untimed solver warm-up. This is one incident energy, not a '
+              'residual check. No untimed solver warm-up. Optional matrix-product measurements '
+              'run before the solvers; profiling adds instrumentation overhead. This is one incident energy, not a '
               'full-workload or general solver ranking. Native matvec/communication implementations '
               'differ, so this measures implementations rather than recurrence cost alone.', '',
               'Per-solve residuals and solution differences: [solves.csv](solves.csv). '
@@ -271,7 +380,10 @@ def main():
     differences = [r['relative_solution_difference'] for r in result['runs']
                    if r['relative_solution_difference'] is not None]
     if differences:
-        lines += ['', f'Maximum paired relative solution difference: {max(differences):.3e}.']
+        lines += ['', f'Maximum relative solution difference from the first method in each repeat: {max(differences):.3e}.']
+    if result['matvec_seconds']:
+        lines += ['', 'Isolated matrix products (seconds/product, maximum rank elapsed):', '',
+                  *[f'- {name}: {seconds:.6g}' for name, seconds in result['matvec_seconds'].items()]]
     (args.output_dir/'report.md').write_text('\n'.join(lines)+'\n')
     print('\n'.join(lines))
     if not all(r['passes_atol'] and (r['reason'] is None or r['reason'] > 0) for r in result['runs']):

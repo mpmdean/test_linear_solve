@@ -1,0 +1,222 @@
+{
+  "ranks": 8,
+  "dimension": 34320,
+  "energy_index": 4,
+  "omega_eV": 112.51111111111112,
+  "gamma_eV": 0.2,
+  "ground_energy_eV": -1069.8630957549833,
+  "rhs_norm": 1.6329931618554654,
+  "matrix_action_relative_error": 2.1508661064396355e-16,
+  "atol": 1e-08,
+  "maxiter_both": 5000,
+  "gmres_restart": 200,
+  "petsc_version": [
+    3,
+    25,
+    5
+  ],
+  "mpi": "Open MPI v5.0.10, package: Open MPI runner@sjc20-av647-db3ce1ac-0006-43d3-8969-390c10a63297-12DDBC26DBF0.local Distribution, ident: 5.0.10, repo rev: v5.0.10, Feb 23, 2026\u0000",
+  "methods": {
+    "pminres_csr": null,
+    "gmres": {
+      "ksp_type": "gmres",
+      "ksp_gmres_restart": 200,
+      "pc_type": "none"
+    },
+    "gmres400": {
+      "ksp_type": "gmres",
+      "ksp_gmres_restart": 400,
+      "pc_type": "none"
+    },
+    "gmres800": {
+      "ksp_type": "gmres",
+      "ksp_gmres_restart": 800,
+      "pc_type": "none"
+    },
+    "cg_symmetric": {
+      "ksp_type": "cg",
+      "ksp_cg_type": "symmetric",
+      "pc_type": "none"
+    },
+    "gmres_jacobi": {
+      "ksp_type": "gmres",
+      "ksp_gmres_restart": 200,
+      "pc_type": "jacobi"
+    },
+    "gmres_bjacobi": {
+      "ksp_type": "gmres",
+      "ksp_gmres_restart": 200,
+      "pc_type": "bjacobi",
+      "sub_ksp_type": "preonly",
+      "sub_pc_type": "ilu",
+      "sub_pc_factor_levels": 0
+    },
+    "gmres_asm": {
+      "ksp_type": "gmres",
+      "ksp_gmres_restart": 200,
+      "pc_type": "asm",
+      "pc_asm_overlap": 1,
+      "sub_ksp_type": "preonly",
+      "sub_pc_type": "ilu",
+      "sub_pc_factor_levels": 0
+    },
+    "bcgs": {
+      "ksp_type": "bcgs",
+      "pc_type": "none"
+    },
+    "bcgsl": {
+      "ksp_type": "bcgsl",
+      "pc_type": "none"
+    },
+    "tfqmr": {
+      "ksp_type": "tfqmr",
+      "pc_type": "none"
+    },
+    "bicg": {
+      "ksp_type": "bicg",
+      "pc_type": "none"
+    }
+  },
+  "matrix_structure": {
+    "shift_removed_hermitian_defect": 1.3729795215636293e-17,
+    "transpose_symmetry_defect": 1.372428606866817e-17
+  },
+  "matvec_seconds": {
+    "fortran": 0.00038895500000000636,
+    "petsc": 0.0003387700000000038
+  },
+  "runs": [
+    {
+      "repeat": 1,
+      "method": "pminres_csr",
+      "wall_s": 0.1554050000000018,
+      "iterations": 361,
+      "reason": null,
+      "true_absolute_residual": 6.318247334480783e-09,
+      "true_relative_residual": 3.869120509544427e-09,
+      "passes_atol": true,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 1,
+      "method": "gmres",
+      "wall_s": 1.6510240000000032,
+      "iterations": 1147,
+      "reason": 3,
+      "true_absolute_residual": 9.984775467130322e-09,
+      "true_relative_residual": 6.11440127268216e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 4.109413714915658e-08
+    },
+    {
+      "repeat": 1,
+      "method": "gmres400",
+      "wall_s": 0.8350940000000016,
+      "iterations": 358,
+      "reason": 3,
+      "true_absolute_residual": 8.717166569412183e-09,
+      "true_relative_residual": 5.338152524476848e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 1.4095351672790587e-09
+    },
+    {
+      "repeat": 1,
+      "method": "gmres800",
+      "wall_s": 0.8457909999999984,
+      "iterations": 358,
+      "reason": 3,
+      "true_absolute_residual": 8.717166569412183e-09,
+      "true_relative_residual": 5.338152524476848e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 1.4095351672790587e-09
+    },
+    {
+      "repeat": 1,
+      "method": "cg_symmetric",
+      "wall_s": 0.0018759999999993227,
+      "iterations": 2,
+      "reason": -10,
+      "true_absolute_residual": 1.4697404424874239,
+      "true_relative_residual": 0.9000285346066312,
+      "passes_atol": false,
+      "relative_solution_difference": 1.8568591574533717
+    },
+    {
+      "repeat": 1,
+      "method": "gmres_jacobi",
+      "wall_s": 8.085604000000004,
+      "iterations": 5000,
+      "reason": -3,
+      "true_absolute_residual": 1.5652923617690822,
+      "true_relative_residual": 0.9585418961525478,
+      "passes_atol": false,
+      "relative_solution_difference": 10.088883516954812
+    },
+    {
+      "repeat": 1,
+      "method": "gmres_bjacobi",
+      "wall_s": 9.704802,
+      "iterations": 5000,
+      "reason": -3,
+      "true_absolute_residual": 1.6225926312569137,
+      "true_relative_residual": 0.9936310017448363,
+      "passes_atol": false,
+      "relative_solution_difference": 28.80166329078775
+    },
+    {
+      "repeat": 1,
+      "method": "gmres_asm",
+      "wall_s": 20.200378999999998,
+      "iterations": 5000,
+      "reason": -3,
+      "true_absolute_residual": 1.6074838531869176,
+      "true_relative_residual": 0.9843788025177257,
+      "passes_atol": false,
+      "relative_solution_difference": 16.439558362096406
+    },
+    {
+      "repeat": 1,
+      "method": "bcgs",
+      "wall_s": 0.9403760000000005,
+      "iterations": 1166,
+      "reason": 3,
+      "true_absolute_residual": 9.160929775710152e-09,
+      "true_relative_residual": 5.609900879989709e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 2.0755201947954277e-08
+    },
+    {
+      "repeat": 1,
+      "method": "bcgsl",
+      "wall_s": 0.7306179999999998,
+      "iterations": 866,
+      "reason": 3,
+      "true_absolute_residual": 8.502944599472881e-09,
+      "true_relative_residual": 5.206968894965568e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 2.24917093448032e-08
+    },
+    {
+      "repeat": 1,
+      "method": "tfqmr",
+      "wall_s": 0.2139970000000062,
+      "iterations": 258,
+      "reason": -9,
+      "true_absolute_residual": 1.2846797262546477,
+      "true_relative_residual": 0.7867024530555587,
+      "passes_atol": false,
+      "relative_solution_difference": 3.910733972252698
+    },
+    {
+      "repeat": 1,
+      "method": "bicg",
+      "wall_s": 0.2841240000000056,
+      "iterations": 362,
+      "reason": 3,
+      "true_absolute_residual": 6.862834967123717e-09,
+      "true_relative_residual": 4.2026109645957844e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 1.0353220706758864e-09
+    }
+  ]
+}

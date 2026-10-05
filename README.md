@@ -103,3 +103,61 @@ The bundled production Fortran files are copied unchanged from EDRIXS and
 retain its GPLv3 license. See [SOURCE.md](SOURCE.md) for attribution and the
 pinned source revision, and [LICENSE](LICENSE) for the license text.
 Compiled binaries and generated runs are not committed.
+
+## Performance investigation and faster PETSc solvers
+
+[Investigation, measured speedups, and recommendations](PERFORMANCE.md).
+The [mathematical note](output/pdf/shifted_pminres_math.pdf)
+([LaTeX source](output/pdf/shifted_pminres_math.tex)) derives the recurrence,
+maps the equations to the code, and explains why the true residual must be checked.
+
+The compiled PETSc short recurrence reduced median solve time from 1.854 s
+to 0.153 s (12.1×) in seven repetitions, with every residual check passing.
+Native PETSc BiCG required only a solver-setting change and achieved 0.303 s
+(6.1×). The original Fortran median was 0.168 s in that comparison.
+
+The runner now accepts `--methods` to compare built-in PETSc alternatives and
+two experimental ports of the EDRIXS shifted short recurrence. The original
+two-method comparison remains the default.
+
+```sh
+python test_pu_o45_linear_solvers.py \
+  --output-dir runs/optimized --ranks 8 --repeats 7 \
+  --methods pminres_csr gmres gmres400 bicg petsc_pminres_c
+```
+
+- `gmres400` increases the restart to 400; `gmres800` tests 800.
+- `bicg` uses native PETSc BiCG without preconditioning. It needs the adjoint
+  matrix product, which the assembled AIJ matrix provides.
+- `petsc_pminres` ports the bundled Fortran recurrence to Python with PETSc
+  distributed Mat/Vec operations.
+- `petsc_pminres_c` runs that recurrence in C with PETSc Mat/Vec operations and
+  fused vector updates. It requires `mpicc` and `pkg-config` with `PETSc.pc`.
+  The runner compiles it automatically using the active environment.
+- `gmres_jacobi`, `gmres_bjacobi`, `gmres_asm`, `bcgs`, `bcgsl`, `tfqmr`, and
+  `cg_symmetric` are exploratory alternatives. Some fail for this system; the
+  runner saves the results and exits nonzero if any solve fails.
+
+Add `--profile --matvec-repeats 500` for per-solve PETSc event profiles and
+separate matrix-product timings. Use an unprofiled run for final timing.
+Preconditioner construction remains inside the solve timer. Subdomain options
+remain available until lazy preconditioner setup completes.
+
+The experimental recurrence requires **A = H + i gamma I with H Hermitian**,
+no preconditioner, and zero initial guesses. The benchmark verifies this
+structure numerically. This is not PETSc's standard Hermitian MINRES, and
+should not be selected for a general nonsymmetric operator. Both ports check
+the true residual before declaring convergence; the runner checks it again
+independently. The unchanged production Fortran remains the reference.
+
+Run the small numerical tests after a compiled benchmark:
+
+```sh
+PMINRES_TEST_LIBRARY="$PWD/runs/optimized/build/libpetsc_pminres.dylib" \
+  python -m unittest -v test_shifted_pminres
+```
+
+The tests cover genuinely complex Hermitian matrices with imaginary shifts,
+comparison to a dense direct solution, zero RHS, exact one-step termination,
+and iteration-limit failure. Without the environment variable, only the
+Python-port tests run.

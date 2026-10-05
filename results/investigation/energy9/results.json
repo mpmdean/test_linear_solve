@@ -1,0 +1,147 @@
+{
+  "ranks": 8,
+  "dimension": 34320,
+  "energy_index": 9,
+  "omega_eV": 126.4,
+  "gamma_eV": 0.2,
+  "ground_energy_eV": -1069.8630957549833,
+  "rhs_norm": 1.6329931618554654,
+  "matrix_action_relative_error": 2.4711469628624345e-16,
+  "atol": 1e-08,
+  "maxiter_both": 5000,
+  "gmres_restart": 200,
+  "petsc_version": [
+    3,
+    25,
+    5
+  ],
+  "mpi": "Open MPI v5.0.10, package: Open MPI runner@sjc20-av647-db3ce1ac-0006-43d3-8969-390c10a63297-12DDBC26DBF0.local Distribution, ident: 5.0.10, repo rev: v5.0.10, Feb 23, 2026\u0000",
+  "methods": {
+    "pminres_csr": null,
+    "bicg": {
+      "ksp_type": "bicg",
+      "pc_type": "none"
+    },
+    "petsc_pminres_c": {
+      "ksp_type": "python",
+      "pc_type": "none"
+    }
+  },
+  "matrix_structure": {
+    "shift_removed_hermitian_defect": 6.1335547798513036e-18,
+    "transpose_symmetry_defect": 6.133063376418858e-18
+  },
+  "matvec_seconds": {},
+  "profile_enabled": false,
+  "matvec_repeats": 0,
+  "runs": [
+    {
+      "repeat": 1,
+      "method": "pminres_csr",
+      "wall_s": 0.09347800000000106,
+      "iterations": 128,
+      "reason": null,
+      "true_absolute_residual": 7.724725588614406e-09,
+      "true_relative_residual": 4.730409023781395e-09,
+      "passes_atol": true,
+      "solution_comparison_method": null,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 1,
+      "method": "bicg",
+      "wall_s": 0.16260099999999866,
+      "iterations": 130,
+      "reason": 3,
+      "true_absolute_residual": 7.968342744548577e-09,
+      "true_relative_residual": 4.8795934549380846e-09,
+      "passes_atol": true,
+      "solution_comparison_method": "pminres_csr",
+      "relative_solution_difference": 4.163761606028924e-08
+    },
+    {
+      "repeat": 1,
+      "method": "petsc_pminres_c",
+      "wall_s": 0.11170299999999855,
+      "iterations": 128,
+      "reason": 3,
+      "true_absolute_residual": 7.716730437920349e-09,
+      "true_relative_residual": 4.725513013877121e-09,
+      "passes_atol": true,
+      "solution_comparison_method": "pminres_csr",
+      "relative_solution_difference": 2.0995055918957051e-10
+    },
+    {
+      "repeat": 2,
+      "method": "petsc_pminres_c",
+      "wall_s": 0.07557100000000005,
+      "iterations": 128,
+      "reason": 3,
+      "true_absolute_residual": 7.716730437920349e-09,
+      "true_relative_residual": 4.725513013877121e-09,
+      "passes_atol": true,
+      "solution_comparison_method": null,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 2,
+      "method": "bicg",
+      "wall_s": 0.11539000000000144,
+      "iterations": 130,
+      "reason": 3,
+      "true_absolute_residual": 7.968342744548577e-09,
+      "true_relative_residual": 4.8795934549380846e-09,
+      "passes_atol": true,
+      "solution_comparison_method": "petsc_pminres_c",
+      "relative_solution_difference": 4.1601533109775216e-08
+    },
+    {
+      "repeat": 2,
+      "method": "pminres_csr",
+      "wall_s": 0.07041900000000112,
+      "iterations": 128,
+      "reason": null,
+      "true_absolute_residual": 7.724725588614406e-09,
+      "true_relative_residual": 4.730409023781395e-09,
+      "passes_atol": true,
+      "solution_comparison_method": "petsc_pminres_c",
+      "relative_solution_difference": 2.0995055918958344e-10
+    },
+    {
+      "repeat": 3,
+      "method": "pminres_csr",
+      "wall_s": 0.06295199999999923,
+      "iterations": 128,
+      "reason": null,
+      "true_absolute_residual": 7.724725588614406e-09,
+      "true_relative_residual": 4.730409023781395e-09,
+      "passes_atol": true,
+      "solution_comparison_method": null,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 3,
+      "method": "bicg",
+      "wall_s": 0.10851000000000255,
+      "iterations": 130,
+      "reason": 3,
+      "true_absolute_residual": 7.968342744548577e-09,
+      "true_relative_residual": 4.8795934549380846e-09,
+      "passes_atol": true,
+      "solution_comparison_method": "pminres_csr",
+      "relative_solution_difference": 4.163761606028924e-08
+    },
+    {
+      "repeat": 3,
+      "method": "petsc_pminres_c",
+      "wall_s": 0.052554000000000656,
+      "iterations": 128,
+      "reason": 3,
+      "true_absolute_residual": 7.716730437920349e-09,
+      "true_relative_residual": 4.725513013877121e-09,
+      "passes_atol": true,
+      "solution_comparison_method": "pminres_csr",
+      "relative_solution_difference": 2.0995055918957051e-10
+    }
+  ]
+}

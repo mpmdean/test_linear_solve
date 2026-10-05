@@ -1,0 +1,87 @@
+{
+  "ranks": 8,
+  "dimension": 34320,
+  "energy_index": 4,
+  "omega_eV": 112.51111111111112,
+  "gamma_eV": 0.2,
+  "ground_energy_eV": -1069.8630957549833,
+  "rhs_norm": 1.6329931618554654,
+  "matrix_action_relative_error": 2.1508661064396355e-16,
+  "atol": 1e-08,
+  "maxiter_both": 5000,
+  "gmres_restart": 200,
+  "petsc_version": [
+    3,
+    25,
+    5
+  ],
+  "mpi": "Open MPI v5.0.10, package: Open MPI runner@sjc20-av647-db3ce1ac-0006-43d3-8969-390c10a63297-12DDBC26DBF0.local Distribution, ident: 5.0.10, repo rev: v5.0.10, Feb 23, 2026\u0000",
+  "runs": [
+    {
+      "repeat": 1,
+      "method": "pminres_csr",
+      "wall_s": 0.15744700000000122,
+      "iterations": 361,
+      "reason": null,
+      "true_absolute_residual": 6.318247334480783e-09,
+      "true_relative_residual": 3.869120509544427e-09,
+      "passes_atol": true,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 1,
+      "method": "gmres",
+      "wall_s": 1.6637950000000004,
+      "iterations": 1147,
+      "reason": 3,
+      "true_absolute_residual": 9.984775467130322e-09,
+      "true_relative_residual": 6.11440127268216e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 4.109413714915658e-08
+    },
+    {
+      "repeat": 2,
+      "method": "gmres",
+      "wall_s": 1.9310240000000007,
+      "iterations": 1147,
+      "reason": 3,
+      "true_absolute_residual": 9.984775467130322e-09,
+      "true_relative_residual": 6.11440127268216e-09,
+      "passes_atol": true,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 2,
+      "method": "pminres_csr",
+      "wall_s": 0.16900300000000001,
+      "iterations": 361,
+      "reason": null,
+      "true_absolute_residual": 6.318247334480783e-09,
+      "true_relative_residual": 3.869120509544427e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 4.1094136677522174e-08
+    },
+    {
+      "repeat": 3,
+      "method": "pminres_csr",
+      "wall_s": 0.15270799999999696,
+      "iterations": 361,
+      "reason": null,
+      "true_absolute_residual": 6.318247334480783e-09,
+      "true_relative_residual": 3.869120509544427e-09,
+      "passes_atol": true,
+      "relative_solution_difference": null
+    },
+    {
+      "repeat": 3,
+      "method": "gmres",
+      "wall_s": 1.6335219999999993,
+      "iterations": 1147,
+      "reason": 3,
+      "true_absolute_residual": 9.984775467130322e-09,
+      "true_relative_residual": 6.11440127268216e-09,
+      "passes_atol": true,
+      "relative_solution_difference": 4.109413714915658e-08
+    }
+  ]
+}

@@ -26,3 +26,9 @@ Its commands have been normalized to remove machine-specific paths; its
 Fortran source hashes and numerical measurements are unchanged.
 
 The repository is distributed under the included GNU GPL version 3 license.
+
+`petsc_shifted_pminres.py` and `petsc_shifted_pminres.c` are experimental GPLv3
+ports of the recurrence in the bundled `src/linsys.f90`, using PETSc distributed
+matrix/vector operations. They add true-residual convergence checks and basic
+breakdown handling. They do not modify the production Fortran files or claim
+to implement PETSc's standard Hermitian MINRES algorithm.
